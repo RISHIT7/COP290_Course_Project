@@ -7,8 +7,9 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.orc as orc
 import fastavro
+import matplotlib.pyplot as plt
 import seaborn as sns
-# pyarrow, h5py, tables -> (pytables), feather-format -> (feather), fastavro -> (avro), seaborn
+# pyarrow, h5py, tables -> (pytables), feather-format -> (feather), fastavro -> (avro), seaborn, matplotlib
 
 # ------------------------------------ generation of data frame --------------------------------------------
 def generate_dataframe(to_date, symbol):
@@ -181,16 +182,35 @@ def read_write_analysis(DATA, symbol):
     sizes.append(avg_orc_size/1000)
     
     results = pd.DataFrame({
-        'Lables': ['CSV', 'TXT', 'Pickle', 'Parquet', 'HDF5', 'Feather', 'JSON', 'AVRO', 'ORC'],
-        'ReadTimes (sec)': read_times,
-        'WriteTimes (sec)': write_times,
+        'variable' :  ['CSV', 'TXT', 'Pickle', 'Parquet', 'HDF5', 'Feather', 'JSON', 'AVRO', 'ORC'],
+        'ReadTimes ': read_times,
+        'WriteTimes ': write_times,
         'Sizes (kb)': sizes
     })
-    
+
+    results.set_index('variable', inplace = True)
+    results = results.transpose()
     return results
 
 def plotting_data(results, symbol):
-    print(results)
+    results['id'] = results.index
+    plot_df = results.melt(id_vars = ['id'])
+    color = ['turquoise', 'fuchsia', 'turquoise']
+    
+    fig, axes = plt.subplots(ncols = 3, figsize = (20, 5))
+    for i, operation in enumerate(['ReadTimes ', 'WriteTimes ', 'Sizes (kb)']):
+        rw_tf = operation in ['ReadTimes ', 'WriteTimes ']
+        sns.barplot(data = plot_df[plot_df['id'] == operation], x='value', y='variable', color = color[i], palette = 'deep',  ax = axes[i])
+        axes[i].set_title(operation)
+        
+        if rw_tf:
+            axes[i].set_xscale('log')
+            axes[i].set_xlabel('seconds (log scale)')
+            axes[i].legend([])
+        else:
+            axes[i].set_xlabel('GS')
+    
+    fig.savefig(symbol + '.png')
 
 # -------------------------------------------------------- MAIN -----------------------------------------------------------------------
 def main():
@@ -200,7 +220,6 @@ def main():
 
     DATA = generate_dataframe(to_date, symbol)
     results = read_write_analysis(DATA, symbol)
-    print(results)
     plotting_data(results, symbol)
 
 
