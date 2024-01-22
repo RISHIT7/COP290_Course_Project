@@ -1,0 +1,7 @@
+pip install pyarrow
+pip install h5py
+pip install tables
+pip install feather-format
+pip install fastavro
+pip install seaborn
+pip install matplotlib
