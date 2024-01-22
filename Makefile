@@ -8,4 +8,4 @@ all:
 	python3 main.py $(SYMBOL) $(num_years)
 
 clean:
-	@rm -f *.csv *.txt *.pkl *.parquet *.feather *.h5 *.json *.avro *.orc
+	@rm -f *.csv *.txt *.pkl *.parquet *.feather *.h5 *.json *.avro *.orc *.png
