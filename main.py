@@ -9,24 +9,25 @@ import pyarrow.orc as orc
 import fastavro
 import matplotlib.pyplot as plt
 import seaborn as sns
+from datetime import date
 # pyarrow, h5py, tables -> (pytables), feather-format -> (feather), fastavro -> (avro), seaborn, matplotlib
 
 # ------------------------------------ generation of data frame --------------------------------------------
 def generate_dataframe(to_date, symbol):
     from jugaad_data.nse import stock_df
-    df = pd.DataFrame(stock_df(symbol=symbol[:-4], from_date=date(to_date,1,16), to_date=date(2023,1,16), series="EQ"))
+    df = pd.DataFrame(stock_df(symbol=symbol, from_date=date(to_date.year-int(sys.argv[2]),to_date.month,to_date.day), to_date=date(to_date.year,to_date.month,to_date.day), series="EQ"))
     df = df[[ "DATE", "OPEN", "CLOSE", "HIGH","LOW", "LTP", "VOLUME", "VALUE","NO OF TRADES"]]
     return df
 
 # ----------------------------------------------- CSV --------------------------------------------------------
 def write_csv(DATA, symbol):
-    DATA.to_csv(path_or_buf = symbol + ".csv")
+    DATA.to_csv(path_or_buf = symbol + ".csv", index = False)
 def read_csv(symbol):
     return pd.read_csv(symbol + ".csv")
     
 # ----------------------------------------------- txt --------------------------------------------------------
 def write_txt(DATA, symbol):
-    DATA.to_csv(path_or_buf = symbol + ".txt" , sep = "\t")
+    DATA.to_csv(path_or_buf = symbol + ".txt" , sep = "\t", index = False)
 def read_txt(symbol):
     return pd.read_csv(symbol + ".txt", sep= "\t")
 
@@ -91,18 +92,18 @@ def read_avro(symbol):
 
     return pd.DataFrame(avro_records)
 
-# ----------------------------------------------- ORC --------------------------------------------------------
-def write_orc(DATA, symbol):
-    table = pa.Table.from_pandas(DATA)
-    with pa.output_stream(symbol + ".orc") as sink:
-        orc.write_table(table, sink)
-    sink.close()
+# # ----------------------------------------------- ORC --------------------------------------------------------
+# def write_orc(DATA, symbol):
+#     table = pa.Table.from_pandas(DATA)
+#     with pa.output_stream(symbol + ".orc") as sink:
+#         orc.write_table(table, sink)
+#     sink.close()
     
-def read_orc(symbol):
-    with pa.input_stream(symbol + ".orc") as source:
-        table_read = orc.read_table(source)
+# def read_orc(symbol):
+#     with pa.input_stream(symbol + ".orc") as source:
+#         table_read = orc.read_table(source)
     
-    return table_read.to_pandas()
+#     return table_read.to_pandas()
 
 def read_write_analysis(DATA, symbol):
     write_times = []
@@ -173,16 +174,16 @@ def read_write_analysis(DATA, symbol):
     read_times.append(avg_avro_read_time)
     sizes.append(avg_avro_size/1000)
     
-    # ------------------------------------------------------ ORC ------------------------------------------------------------------
-    avg_orc_write_time = timeit.timeit(stmt=lambda: write_orc(DATA, symbol), number=10)
-    avg_orc_read_time = timeit.timeit(stmt=lambda: read_orc(symbol), number=10) # in sec
-    avg_orc_size = os.path.getsize(symbol + ".orc") # in 1000 kb 
-    write_times.append(avg_orc_write_time)
-    read_times.append(avg_orc_read_time)
-    sizes.append(avg_orc_size/1000)
+    # # ------------------------------------------------------ ORC ------------------------------------------------------------------
+    # avg_orc_write_time = timeit.timeit(stmt=lambda: write_orc(DATA, symbol), number=10)
+    # avg_orc_read_time = timeit.timeit(stmt=lambda: read_orc(symbol), number=10) # in sec
+    # avg_orc_size = os.path.getsize(symbol + ".orc") # in 1000 kb 
+    # write_times.append(avg_orc_write_time)
+    # read_times.append(avg_orc_read_time)
+    # sizes.append(avg_orc_size/1000)
     
     results = pd.DataFrame({
-        'variable' :  ['CSV', 'TXT', 'Pickle', 'Parquet', 'HDF5', 'Feather', 'JSON', 'AVRO', 'ORC'],
+        'variable' :  ['CSV', 'TXT', 'Pickle', 'Parquet', 'HDF5', 'Feather', 'JSON', 'AVRO'],
         'ReadTimes ': read_times,
         'WriteTimes ': write_times,
         'Sizes (kb)': sizes
@@ -200,7 +201,7 @@ def plotting_data(results, symbol):
     fig, axes = plt.subplots(ncols = 3, figsize = (20, 5))
     for i, operation in enumerate(['ReadTimes ', 'WriteTimes ', 'Sizes (kb)']):
         rw_tf = operation in ['ReadTimes ', 'WriteTimes ']
-        sns.barplot(data = plot_df[plot_df['id'] == operation], x='value', y='variable', color = color[i], palette = 'deep',  ax = axes[i])
+        sns.barplot(data = plot_df[plot_df['id'] == operation], x='value', y='variable', color = color[i], hue = 'variable', legend = False,  palette = 'deep',  ax = axes[i])
         axes[i].set_title(operation)
         
         if rw_tf:
@@ -214,11 +215,11 @@ def plotting_data(results, symbol):
 
 # -------------------------------------------------------- MAIN -----------------------------------------------------------------------
 def main():
-    to_date = 2023-int(sys.argv[2])
+    today = date.today()
     argument = sys.argv[1]
-    symbol = argument + "_sol"
+    symbol = argument + ""
 
-    DATA = generate_dataframe(to_date, symbol)
+    DATA = generate_dataframe(today, argument)
     results = read_write_analysis(DATA, symbol)
     plotting_data(results, symbol)
 
