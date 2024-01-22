@@ -5,6 +5,7 @@ num_years := 1
 # OUTPUT := $(addprefix $(SYMBOL), _sol)
 
 all:
+	pip install -r requirements.txt
 	python3 main.py $(SYMBOL) $(num_years)
 
 clean:
