@@ -4,6 +4,8 @@ import os
 import timeit
 from jugaad_data.nse import bhavcopy_save, bhavcopy_fo_save
 import pandas as pd
+import pyarrow as pa
+import pyarrow.orc as orc
 import fastavro
 # pyarrow, h5py, tables -> (pytables), feather-format -> (feather), fastavro -> (avro)
 
@@ -83,8 +85,22 @@ def write_avro(DATA, symbol):
 def read_avro(symbol):
     with open(symbol + '.avro', 'rb') as file:
         avro_records = list(fastavro.reader(file))
+    file.close()
 
     return pd.DataFrame(avro_records)
+
+# ----------------------------------------------- ORC --------------------------------------------------------
+def write_orc(DATA, symbol):
+    table = pa.Table.from_pandas(DATA)
+    with pa.output_stream(symbol + ".orc") as sink:
+        orc.write_table(table, sink)
+    sink.close()
+    
+def read_orc(symbol):
+    with pa.input_stream(symbol + ".orc") as source:
+        table_read = orc.read_table(source)
+    
+    return table_read.to_pandas()
 
 # -------------------------------------------------------- MAIN -----------------------------------------------------------------------
 def main():
@@ -134,7 +150,10 @@ def main():
     avg_avro_read_time = timeit.timeit(stmt=lambda: read_avro(symbol), number=10) # in sec
     avg_avro_size = os.path.getsize(symbol + ".avro") # in 1000 kb 
     
-    # ORC
+    # ------------------------------------------------------ ORC ------------------------------------------------------------------
+    avg_orc_write_time = timeit.timeit(stmt=lambda: write_orc(DATA, symbol), number=10)
+    avg_orc_read_time = timeit.timeit(stmt=lambda: read_orc(symbol), number=10) # in sec
+    avg_orc_size = os.path.getsize(symbol + ".orc") # in 1000 kb 
 
 
 if __name__ == "__main__":
