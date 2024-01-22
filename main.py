@@ -7,7 +7,8 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.orc as orc
 import fastavro
-# pyarrow, h5py, tables -> (pytables), feather-format -> (feather), fastavro -> (avro)
+import seaborn as sns
+# pyarrow, h5py, tables -> (pytables), feather-format -> (feather), fastavro -> (avro), seaborn
 
 # ------------------------------------ generation of data frame --------------------------------------------
 def generate_dataframe(to_date, symbol):
@@ -102,6 +103,95 @@ def read_orc(symbol):
     
     return table_read.to_pandas()
 
+def read_write_analysis(DATA, symbol):
+    write_times = []
+    read_times = []
+    sizes = []
+    
+    # ------------------------------------------------------ CSV ----------------------------------------------------------------------
+    avg_csv_write_time = timeit.timeit(stmt=lambda: write_csv(DATA, symbol), number=10)
+    avg_csv_read_time = timeit.timeit(stmt=lambda: read_csv(symbol), number=10) # in sec
+    avg_csv_size = os.path.getsize(symbol + ".csv") # in 1000 kb
+    write_times.append(avg_csv_write_time)
+    read_times.append(avg_csv_read_time)
+    sizes.append(avg_csv_size/1000)
+    
+    # ----------------------------------------------------- txt -----------------------------------------------------------------------
+    avg_txt_write_time = timeit.timeit(stmt=lambda: write_txt(DATA, symbol), number=10)
+    avg_txt_read_time = timeit.timeit(stmt=lambda: read_txt(symbol), number=10) # in sec
+    avg_txt_size = os.path.getsize(symbol + ".txt") # in 1000 kb  
+    write_times.append(avg_txt_write_time)
+    read_times.append(avg_txt_read_time)
+    sizes.append(avg_txt_size/1000)
+        
+    # ------------------------------------------------------ pickle -------------------------------------------------------------------
+    avg_pickle_write_time = timeit.timeit(stmt=lambda: write_pickle(DATA, symbol), number=10)
+    avg_pickle_read_time = timeit.timeit(stmt=lambda: read_pickle(symbol), number=10) # in sec
+    avg_pickle_size = os.path.getsize(symbol + ".pkl") # in 1000 kb 
+    write_times.append(avg_pickle_write_time)
+    read_times.append(avg_pickle_read_time)
+    sizes.append(avg_pickle_size/1000)
+    
+    # ------------------------------------------------------ Parquet ------------------------------------------------------------------
+    avg_parquet_write_time = timeit.timeit(stmt=lambda: write_parquet(DATA, symbol), number=10)
+    avg_parquet_read_time = timeit.timeit(stmt=lambda: read_parquet(symbol), number=10) # in sec
+    avg_parquet_size = os.path.getsize(symbol + ".parquet") # in 1000 kb 
+    write_times.append(avg_parquet_write_time)
+    read_times.append(avg_parquet_read_time)
+    sizes.append(avg_parquet_size/1000)
+    
+    # ------------------------------------------------------ HDF5 ------------------------------------------------------------------
+    avg_hdf5_write_time = timeit.timeit(stmt=lambda: write_hdf5(DATA, symbol), number=10)
+    avg_hdf5_read_time = timeit.timeit(stmt=lambda: read_hdf5(symbol), number=10) # in sec
+    avg_hdf5_size = os.path.getsize(symbol + ".h5") # in 1000 kb 
+    write_times.append(avg_hdf5_write_time)
+    read_times.append(avg_hdf5_read_time)
+    sizes.append(avg_hdf5_size/1000)
+    
+    # ------------------------------------------------------ Feather ------------------------------------------------------------------
+    avg_feather_write_time = timeit.timeit(stmt=lambda: write_feather(DATA, symbol), number=10)
+    avg_feather_read_time = timeit.timeit(stmt=lambda: read_feather(symbol), number=10) # in sec
+    avg_feather_size = os.path.getsize(symbol + ".feather") # in 1000 kb 
+    write_times.append(avg_feather_write_time)
+    read_times.append(avg_feather_read_time)
+    sizes.append(avg_feather_size/1000)
+    
+    # ------------------------------------------------------ JSON ------------------------------------------------------------------
+    avg_json_write_time = timeit.timeit(stmt=lambda: write_json(DATA, symbol), number=10)
+    avg_json_read_time = timeit.timeit(stmt=lambda: read_json(symbol), number=10) # in sec
+    avg_json_size = os.path.getsize(symbol + ".json") # in 1000 kb 
+    write_times.append(avg_json_write_time)
+    read_times.append(avg_json_read_time)
+    sizes.append(avg_json_size/1000)
+    
+    # ------------------------------------------------------ AVRO ------------------------------------------------------------------
+    avg_avro_write_time = timeit.timeit(stmt=lambda: write_avro(DATA, symbol), number=10)
+    avg_avro_read_time = timeit.timeit(stmt=lambda: read_avro(symbol), number=10) # in sec
+    avg_avro_size = os.path.getsize(symbol + ".avro") # in 1000 kb 
+    write_times.append(avg_avro_write_time)
+    read_times.append(avg_avro_read_time)
+    sizes.append(avg_avro_size/1000)
+    
+    # ------------------------------------------------------ ORC ------------------------------------------------------------------
+    avg_orc_write_time = timeit.timeit(stmt=lambda: write_orc(DATA, symbol), number=10)
+    avg_orc_read_time = timeit.timeit(stmt=lambda: read_orc(symbol), number=10) # in sec
+    avg_orc_size = os.path.getsize(symbol + ".orc") # in 1000 kb 
+    write_times.append(avg_orc_write_time)
+    read_times.append(avg_orc_read_time)
+    sizes.append(avg_orc_size/1000)
+    
+    results = pd.DataFrame({
+        'Lables': ['CSV', 'TXT', 'Pickle', 'Parquet', 'HDF5', 'Feather', 'JSON', 'AVRO', 'ORC'],
+        'ReadTimes (sec)': read_times,
+        'WriteTimes (sec)': write_times,
+        'Sizes (kb)': sizes
+    })
+    
+    return results
+
+def plotting_data(results, symbol):
+    print(results)
+
 # -------------------------------------------------------- MAIN -----------------------------------------------------------------------
 def main():
     to_date = 2023-int(sys.argv[2])
@@ -109,51 +199,9 @@ def main():
     symbol = argument + "_sol"
 
     DATA = generate_dataframe(to_date, symbol)
-
-    # ------------------------------------------------------ CSV ----------------------------------------------------------------------
-    avg_csv_write_time = timeit.timeit(stmt=lambda: write_csv(DATA, symbol), number=10)
-    avg_csv_read_time = timeit.timeit(stmt=lambda: read_csv(symbol), number=10) # in sec
-    avg_csv_size = os.path.getsize(symbol + ".csv") # in 1000 kb
-    
-    # ----------------------------------------------------- txt -----------------------------------------------------------------------
-    avg_txt_write_time = timeit.timeit(stmt=lambda: write_txt(DATA, symbol), number=10)
-    avg_txt_read_time = timeit.timeit(stmt=lambda: read_txt(symbol), number=10) # in sec
-    avg_txt_size = os.path.getsize(symbol + ".txt") # in 1000 kb  
-        
-    # ------------------------------------------------------ pickle -------------------------------------------------------------------
-    avg_pickle_write_time = timeit.timeit(stmt=lambda: write_pickle(DATA, symbol), number=10)
-    avg_pickle_read_time = timeit.timeit(stmt=lambda: read_pickle(symbol), number=10) # in sec
-    avg_pickle_size = os.path.getsize(symbol + ".pkl") # in 1000 kb 
-    
-    # ------------------------------------------------------ Parquet ------------------------------------------------------------------
-    avg_parquet_write_time = timeit.timeit(stmt=lambda: write_parquet(DATA, symbol), number=10)
-    avg_parquet_read_time = timeit.timeit(stmt=lambda: read_parquet(symbol), number=10) # in sec
-    avg_parquet_size = os.path.getsize(symbol + ".parquet") # in 1000 kb 
-    
-    # ------------------------------------------------------ HDF5 ------------------------------------------------------------------
-    avg_hdf5_write_time = timeit.timeit(stmt=lambda: write_hdf5(DATA, symbol), number=10)
-    avg_hdf5_read_time = timeit.timeit(stmt=lambda: read_hdf5(symbol), number=10) # in sec
-    avg_hdf5_size = os.path.getsize(symbol + ".h5") # in 1000 kb 
-    
-    # ------------------------------------------------------ Feather ------------------------------------------------------------------
-    avg_feather_write_time = timeit.timeit(stmt=lambda: write_feather(DATA, symbol), number=10)
-    avg_feather_read_time = timeit.timeit(stmt=lambda: read_feather(symbol), number=10) # in sec
-    avg_feather_size = os.path.getsize(symbol + ".feather") # in 1000 kb 
-    
-    # ------------------------------------------------------ JSON ------------------------------------------------------------------
-    avg_json_write_time = timeit.timeit(stmt=lambda: write_json(DATA, symbol), number=10)
-    avg_json_read_time = timeit.timeit(stmt=lambda: read_json(symbol), number=10) # in sec
-    avg_json_size = os.path.getsize(symbol + ".json") # in 1000 kb 
-    
-    # ------------------------------------------------------ AVRO ------------------------------------------------------------------
-    avg_avro_write_time = timeit.timeit(stmt=lambda: write_avro(DATA, symbol), number=10)
-    avg_avro_read_time = timeit.timeit(stmt=lambda: read_avro(symbol), number=10) # in sec
-    avg_avro_size = os.path.getsize(symbol + ".avro") # in 1000 kb 
-    
-    # ------------------------------------------------------ ORC ------------------------------------------------------------------
-    avg_orc_write_time = timeit.timeit(stmt=lambda: write_orc(DATA, symbol), number=10)
-    avg_orc_read_time = timeit.timeit(stmt=lambda: read_orc(symbol), number=10) # in sec
-    avg_orc_size = os.path.getsize(symbol + ".orc") # in 1000 kb 
+    results = read_write_analysis(DATA, symbol)
+    print(results)
+    plotting_data(results, symbol)
 
 
 if __name__ == "__main__":
