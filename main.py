@@ -4,7 +4,8 @@ import os
 import timeit
 from jugaad_data.nse import bhavcopy_save, bhavcopy_fo_save
 import pandas as pd
-# pyarrow, h5py, tables -> (pytables), feather-format -> (feather)
+import fastavro
+# pyarrow, h5py, tables -> (pytables), feather-format -> (feather), fastavro -> (avro)
 
 # ------------------------------------ generation of data frame --------------------------------------------
 def generate_dataframe(to_date, symbol):
@@ -49,6 +50,42 @@ def write_feather(DATA, symbol):
 def read_feather(symbol):
     return pd.read_feather(symbol + ".feather")
 
+# ----------------------------------------------- json --------------------------------------------------------
+def write_json(DATA, symbol):
+    DATA.to_json(symbol + ".json")
+def read_json(symbol):
+    return pd.read_json(symbol + ".json")
+
+# ----------------------------------------------- avro --------------------------------------------------------
+def write_avro(DATA, symbol):
+    avro_schema = {
+      "type": "record",
+      "name": "StockTradeRecord",
+      "fields": [
+        {"name": "DATE", "type": ["null", {"type": "long", "logicalType": "timestamp-millis"}]},
+        {"name": "OPEN", "type": ["null", "double"]},
+        {"name": "CLOSE", "type": ["null", "double"]},
+        {"name": "HIGH", "type": ["null", "double"]},
+        {"name": "LOW", "type": ["null", "double"]},
+        {"name": "LTP", "type": ["null", "double"]},
+        {"name": "VOLUME", "type": ["null", "long"]},
+        {"name": "VALUE", "type": ["null", "double"]},
+        {"name": "NO_OF_TRADES", "type": ["null", "long"]}
+      ]
+    }
+    
+    records = DATA.to_dict(orient='records')
+
+    # Write Avro file
+    with open(symbol + ".avro", 'wb') as file:
+        fastavro.writer(file, avro_schema, records)
+    file.close()
+def read_avro(symbol):
+    with open(symbol + '.avro', 'rb') as file:
+        avro_records = list(fastavro.reader(file))
+
+    return pd.DataFrame(avro_records)
+
 # -------------------------------------------------------- MAIN -----------------------------------------------------------------------
 def main():
     to_date = 2023-int(sys.argv[2])
@@ -87,9 +124,15 @@ def main():
     avg_feather_read_time = timeit.timeit(stmt=lambda: read_feather(symbol), number=10) # in sec
     avg_feather_size = os.path.getsize(symbol + ".feather") # in 1000 kb 
     
-    # JSON
+    # ------------------------------------------------------ JSON ------------------------------------------------------------------
+    avg_json_write_time = timeit.timeit(stmt=lambda: write_json(DATA, symbol), number=10)
+    avg_json_read_time = timeit.timeit(stmt=lambda: read_json(symbol), number=10) # in sec
+    avg_json_size = os.path.getsize(symbol + ".json") # in 1000 kb 
     
-    # AVRO
+    # ------------------------------------------------------ AVRO ------------------------------------------------------------------
+    avg_avro_write_time = timeit.timeit(stmt=lambda: write_avro(DATA, symbol), number=10)
+    avg_avro_read_time = timeit.timeit(stmt=lambda: read_avro(symbol), number=10) # in sec
+    avg_avro_size = os.path.getsize(symbol + ".avro") # in 1000 kb 
     
     # ORC
 
