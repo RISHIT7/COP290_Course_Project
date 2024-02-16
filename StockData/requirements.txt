@@ -1,0 +1,7 @@
+pyarrow
+h5py
+tables
+feather-format
+fastavro
+seaborn
+matplotlib
